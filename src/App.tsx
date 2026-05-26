@@ -5,6 +5,17 @@ import { DashboardDataResponse } from "./types";
 import ScheduleRail from "./components/ScheduleRail";
 import MemberTable from "./components/MemberTable";
 import ConfigModal from "./components/ConfigModal";
+import {
+  getLocalDashboardData,
+  localToggleStatus,
+  localEditTime,
+  localAddNewMember,
+  localEditName,
+  localMoveRow,
+  localRemoveMember,
+  localResetTable,
+  localSaveConfig
+} from "./utils/localDB";
 
 export default function App() {
   const [data, setData] = useState<DashboardDataResponse | null>(null);
@@ -13,6 +24,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [timeStr, setTimeStr] = useState("");
+  const [useFallback, setUseFallback] = useState(false);
 
   // Live Digital Clock
   useEffect(() => {
@@ -29,10 +41,17 @@ export default function App() {
     setLoading(true);
     try {
       const response = await fetch(`/api/data?offset3=${o3}&offset4=${o4}`);
+      if (!response.ok) {
+        throw new Error("Backend response error");
+      }
       const payload = await response.json();
       setData(payload);
+      setUseFallback(false);
     } catch (err) {
-      console.error("Failed to load dashboard data:", err);
+      console.warn("Backend API is down or not present (e.g., deployed statically). Using fallback localStorage database.", err);
+      const localPayload = getLocalDashboardData(o3, o4);
+      setData(localPayload);
+      setUseFallback(true);
     } finally {
       setLoading(false);
     }
@@ -54,127 +73,185 @@ export default function App() {
   // API wrappers
   const handleToggleStatus = async (boardId: number, name: string, status: boolean) => {
     setLoading(true);
+    const dateKey = boardId === 3 ? data?.dateKey4 : data?.dateKey3;
+    if (useFallback || !dateKey) {
+      localToggleStatus(boardId, name, status, dateKey || "");
+      fetchData(offset3, offset4);
+      return;
+    }
     try {
-      const dateKey = boardId === 3 ? data?.dateKey4 : data?.dateKey3;
-      await fetch("/api/status", {
+      const response = await fetch("/api/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dateKey, boardId, name, status }),
       });
+      if (!response.ok) throw new Error();
       fetchData(offset3, offset4);
     } catch (err) {
-      console.error(err);
-      setLoading(false);
+      localToggleStatus(boardId, name, status, dateKey);
+      setUseFallback(true);
+      fetchData(offset3, offset4);
     }
   };
 
   const handleEditTime = async (boardId: number, name: string, time: string) => {
     setLoading(true);
+    const dateKey = boardId === 3 ? data?.dateKey4 : data?.dateKey3;
+    if (useFallback || !dateKey) {
+      localEditTime(boardId, name, time, dateKey || "");
+      fetchData(offset3, offset4);
+      return;
+    }
     try {
-      const dateKey = boardId === 3 ? data?.dateKey4 : data?.dateKey3;
-      await fetch("/api/member/time", {
+      const response = await fetch("/api/member/time", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dateKey, boardId, name, time }),
       });
+      if (!response.ok) throw new Error();
       fetchData(offset3, offset4);
     } catch (err) {
-      console.error(err);
-      setLoading(false);
+      localEditTime(boardId, name, time, dateKey);
+      setUseFallback(true);
+      fetchData(offset3, offset4);
     }
   };
 
   const handleAddNewMember = async (boardId: number, name: string) => {
     setLoading(true);
+    if (useFallback) {
+      localAddNewMember(boardId, name);
+      fetchData(offset3, offset4);
+      return;
+    }
     try {
-      await fetch("/api/member/add", {
+      const response = await fetch("/api/member/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ boardId, name }),
       });
+      if (!response.ok) throw new Error();
       fetchData(offset3, offset4);
     } catch (err) {
-      console.error(err);
-      setLoading(false);
+      localAddNewMember(boardId, name);
+      setUseFallback(true);
+      fetchData(offset3, offset4);
     }
   };
 
   const handleEditName = async (boardId: number, memberId: string, newName: string) => {
     setLoading(true);
+    if (useFallback) {
+      localEditName(boardId, memberId, newName);
+      fetchData(offset3, offset4);
+      return;
+    }
     try {
-      await fetch("/api/member/edit", {
+      const response = await fetch("/api/member/edit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ boardId, memberId, newName }),
       });
+      if (!response.ok) throw new Error();
       fetchData(offset3, offset4);
     } catch (err) {
-      console.error(err);
-      setLoading(false);
+      localEditName(boardId, memberId, newName);
+      setUseFallback(true);
+      fetchData(offset3, offset4);
     }
   };
 
   const handleMoveRow = async (boardId: number, memberId: string, direction: "up" | "down") => {
     setLoading(true);
+    if (useFallback) {
+      localMoveRow(boardId, memberId, direction);
+      fetchData(offset3, offset4);
+      return;
+    }
     try {
-      await fetch("/api/member/move", {
+      const response = await fetch("/api/member/move", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ boardId, memberId, direction }),
       });
+      if (!response.ok) throw new Error();
       fetchData(offset3, offset4);
     } catch (err) {
-      console.error(err);
-      setLoading(false);
+      localMoveRow(boardId, memberId, direction);
+      setUseFallback(true);
+      fetchData(offset3, offset4);
     }
   };
 
   const handleRemoveMember = async (boardId: number, memberId: string, name: string) => {
     if (!confirm(`Xóa nhân vật ${name}?`)) return;
     setLoading(true);
+    if (useFallback) {
+      localRemoveMember(boardId, memberId);
+      fetchData(offset3, offset4);
+      return;
+    }
     try {
-      await fetch("/api/member/remove", {
+      const response = await fetch("/api/member/remove", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ boardId, memberId }),
       });
+      if (!response.ok) throw new Error();
       fetchData(offset3, offset4);
     } catch (err) {
-      console.error(err);
-      setLoading(false);
+      localRemoveMember(boardId, memberId);
+      setUseFallback(true);
+      fetchData(offset3, offset4);
     }
   };
 
   const handleResetTable = async (boardId: number) => {
     if (!confirm("Xóa trạng thái của bảng này trong Server đang chọn?")) return;
     setLoading(true);
+    const dateKey = boardId === 3 ? data?.dateKey4 : data?.dateKey3;
+    if (useFallback || !dateKey) {
+      localResetTable(boardId, dateKey || "");
+      fetchData(offset3, offset4);
+      return;
+    }
     try {
-      const dateKey = boardId === 3 ? data?.dateKey4 : data?.dateKey3;
-      await fetch("/api/table/reset", {
+      const response = await fetch("/api/table/reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ boardId, dateKey }),
       });
+      if (!response.ok) throw new Error();
       fetchData(offset3, offset4);
     } catch (err) {
-      console.error(err);
-      setLoading(false);
+      localResetTable(boardId, dateKey);
+      setUseFallback(true);
+      fetchData(offset3, offset4);
     }
   };
 
   const handleSaveConfig = async (cfg: { pk4: string[]; kun2: string[] }) => {
     setLoading(true);
+    if (useFallback) {
+      localSaveConfig(cfg);
+      setIsConfigOpen(false);
+      fetchData(offset3, offset4);
+      return;
+    }
     try {
-      await fetch("/api/config/save", {
+      const response = await fetch("/api/config/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(cfg),
       });
+      if (!response.ok) throw new Error();
       setIsConfigOpen(false);
       fetchData(offset3, offset4);
     } catch (err) {
-      console.error(err);
-      setLoading(false);
+      localSaveConfig(cfg);
+      setIsConfigOpen(false);
+      setUseFallback(true);
+      fetchData(offset3, offset4);
     }
   };
 
