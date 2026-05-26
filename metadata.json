@@ -1,0 +1,6 @@
+{
+  "name": "Dashboard Phù & Kun",
+  "description": "Bảng quản lý phân chia lịch xoay chuyển server và theo dõi trạng thái thành viên Phù & Kun, tích hợp báo cáo tự động từ AI thành tích.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dashboard Phù & Kun</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #f0f2f5; --card-bg: #ffffff; --text-main: #1c1e21; --text-muted: #606770;
+      --primary: #4361ee; --success: #2ecc71; --warning: #f39c12; --danger: #e74c3c; --border: #ddd;
+      --purple: #8e44ad; --dark: #1a1a1a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); padding: 15px; }
+    
+    .card { background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 20px;}
+    .phu-border { border-top: 6px solid var(--primary); }
+    .kun4-border { border-top: 6px solid var(--warning); }
+    .kun2-border { border-top: 6px solid var(--purple); }
+    
+    .header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;}
+    .header h1 { font-size: 22px; color: var(--primary); font-weight: 800;}
+    .clock { font-size: 16px; font-weight: bold; color: var(--text-muted); }
+    
+     
+    .sch-title { font-size: 14px; font-weight: bold; color: var(--dark); margin: 10px 0 5px 0; display: flex; align-items: center; gap: 5px;}
+    .schedule-grid { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 5px; -webkit-overflow-scrolling: touch;}
+    .schedule-item { flex: 0 0 auto; min-width: 140px; background: #f8f9fa; border: 2px solid var(--border); padding: 8px; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.15s;}
+    .schedule-item:hover { background: #eef2ff; border-color: #aebbf5;}
+    .schedule-item.active-day { background: #fff9e6; border-color: var(--warning); box-shadow: 0 0 8px rgba(243, 156, 18, 0.15); font-weight: bold;}
+    .sch-date { font-size: 11px; color: var(--text-muted); }
+    .sch-day { font-size: 13px; font-weight: 800; display: block; margin: 2px 0; }
+    .sch-srv { font-size: 11px; color: var(--primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;}
+
+     
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; display: inline-flex; justify-content: center; align-items: center; gap: 5px;}
+    .btn-reset { background: var(--danger); color: white; }
+    .btn-add { background: var(--primary); color: white; }
+    .btn-capture { background: var(--purple); color: white; }
+    .btn-config { background: #7f8c8d; color: white; }
+    .btn-small { padding: 6px 12px; font-size: 11px; }
+    .btn-icon { background: none; border: none; cursor: pointer; font-size: 16px; opacity: 0.8; padding: 5px; }
+    .btn-icon:hover { opacity: 1; transform: scale(1.2); }
+
+     
+    .grid-boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+    .mini-metrics { display: flex; justify-content: space-around; background: #f0f2f5; padding: 12px; border-radius: 8px; margin-bottom: 15px; text-align: center;}
+    .stat-box { flex: 1; }
+    .stat-val { font-size: 20px; font-weight: 800; display: block; }
+    .stat-lab { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: bold; }
+
+    .table-container { overflow-x: auto; width: 100%; }
+    table { width: 100%; border-collapse: collapse; min-width: 400px; }
+    th, td { padding: 10px 6px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px;}
+    th { background-color: #f8f9fa; color: var(--text-muted); font-size: 11px; text-transform: uppercase; }
+    
+    .time-badge { font-size: 11px; color: #fff; background: var(--primary); padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 5px; cursor: pointer; }
+    .status-tag { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; }
+    .tag-done { background: #e6fcf5; color: #0ca678; }
+    .tag-wait { background: #fff5f5; color: #fa5252; }
+    
+    input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; accent-color: var(--success); }
+    input[type="text"] { padding: 10px; border: 1px solid var(--border); border-radius: 6px; width: 100%; font-size: 14px; }
+    .add-form { display: flex; gap: 10px; margin-bottom: 15px; background: #f8f9fa; padding: 10px; border-radius: 8px; }
+
+     
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: white; padding: 25px; border-radius: 12px; width: 95%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 10px;}
+    .cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;}
+    .cfg-col h4 { margin-bottom: 10px; color: var(--primary); font-size: 14px;}
+    .cfg-group { margin-bottom: 10px; }
+    .cfg-group label { font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 3px; }
+    .cfg-group input { padding: 8px; font-size: 13px; }
+
+    #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; font-size: 18px; z-index: 999; display: none; font-weight: bold; color: var(--primary);}
+
+    @media (max-width: 600px) {
+      body { padding: 8px; }
+      .header { flex-direction: column; gap: 10px; text-align: center; }
+      th, td { padding: 8px 4px; font-size: 13px; }
+      .add-form { flex-direction: column; }
+      .cfg-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="loader">ĐANG XỬ LÝ...</div>
+
+  <div class="modal-overlay" id="cfgModal">
+    <div class="modal-content">
+      <div class="modal-header">⚙️ Cấu Hình Tên Server (Xoay Tour)</div>
+      <div class="cfg-grid">
+        <div class="cfg-col">
+          <h4>🛡️ Phù 2 & Kun 4 (3 Ngày)</h4>
+          <div class="cfg-group"><label>Ngày 1</label><input type="text" id="cfg_pk0"></div>
+          <div class="cfg-group"><label>Ngày 2</label><input type="text" id="cfg_pk1"></div>
+          <div class="cfg-group"><label>Ngày 3</label><input type="text" id="cfg_pk2"></div>
+        </div>
+        <div class="cfg-col">
+          <h4 style="color:var(--purple)">🦋 Kun 2 (4 Ngày)</h4>
+          <div class="cfg-group"><label>Ngày 1</label><input type="text" id="cfg_k2_0"></div>
+          <div class="cfg-group"><label>Ngày 2</label><input type="text" id="cfg_k2_1"></div>
+          <div class="cfg-group"><label>Ngày 3</label><input type="text" id="cfg_k2_2"></div>
+          <div class="cfg-group"><label>Ngày 4</label><input type="text" id="cfg_k2_3"></div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn btn-reset" onclick="closeConfig()">Hủy</button>
+        <button class="btn btn-add" onclick="saveConfig()">💾 Lưu Cấu Hình</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="header card">
+    <h1>📊 DASHBOARD PHÙ & KUN</h1>
+    <div style="text-align: right;">
+      <div class="clock" id="clock">00:00:00</div>
+      <div style="margin-top: 8px; display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap;">
+        <button class="btn btn-config btn-small" data-html2canvas-ignore onclick="openConfig()">⚙️ Cấu hình Server</button>
+        <button class="btn btn-capture btn-small" onclick="takeScreenshot()">📸 Chụp ảnh</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sch-title" style="color: var(--primary)">📅 LỊCH XOAY TOUR: PHÙ 2 & KUN 4 (Chu kỳ 3 ngày)</div>
+    <div class="schedule-grid" id="schedule-container3"></div>
+    
+    <div class="sch-title" style="color: var(--purple)">📅 LỊCH XOAY TOUR: KUN 2 (Chu kỳ 4 ngày)</div>
+    <div class="schedule-grid" id="schedule-container4"></div>
+  </div>
+
+  <div class="grid-boards">
+    <div class="card phu-border">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; flex-wrap: wrap; gap: 5px;">
+        <h2 style="font-size: 16px;">🛡️ BẢNG PHÙ 2</h2>
+        <button class="btn btn-reset btn-small" data-html2canvas-ignore onclick="confirmResetTable(1)">Xóa trạng thái</button>
+      </div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; font-weight: bold;">
+        📅 Ngày: <span id="board1-date">...</span> - SV: <span id="srv1-name" style="color:var(--primary)">...</span>
+      </div>
+      
+      <div class="mini-metrics">
+        <div class="stat-box"><span class="stat-lab">Tổng</span><span class="stat-val" id="m1-total" style="color:var(--primary)">0</span></div>
+        <div class="stat-box"><span class="stat-lab">Xong</span><span class="stat-val" id="m1-completed" style="color:var(--success)">0</span></div>
+        <div class="stat-box"><span class="stat-lab">Chờ</span><span class="stat-val" id="m1-pending" style="color:var(--warning)">0</span></div>
+      </div>
+      <div class="add-form" data-html2canvas-ignore>
+        <input type="text" id="newName1" placeholder="Thêm thành viên Phù 2...">
+        <button class="btn btn-add btn-small" onclick="addNewMember(1)">➕</button>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>STT</th><th>Nhân vật</th><th>Trạng thái</th><th data-html2canvas-ignore>Hành động</th></tr></thead>
+          <tbody id="table1-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card kun4-border">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; flex-wrap: wrap; gap: 5px;">
+        <h2 style="font-size: 16px;">🔥 BẢNG KUN 4</h2>
+        <button class="btn btn-reset btn-small" data-html2canvas-ignore onclick="confirmResetTable(2)">Xóa trạng thái</button>
+      </div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; font-weight: bold;">
+        📅 Ngày: <span id="board2-date">...</span> - SV: <span id="srv2-name" style="color:var(--warning)">...</span>
+      </div>
+
+      <div class="mini-metrics">
+        <div class="stat-box"><span class="stat-lab">Tổng</span><span class="stat-val" id="m2-total" style="color:var(--primary)">0</span></div>
+        <div class="stat-box"><span class="stat-lab">Xong</span><span class="stat-val" id="m2-completed" style="color:var(--success)">0</span></div>
+        <div class="stat-box"><span class="stat-lab">Chờ</span><span class="stat-val" id="m2-pending" style="color:var(--warning)">0</span></div>
+      </div>
+      <div class="add-form" data-html2canvas-ignore>
+        <input type="text" id="newName2" placeholder="Thêm thành viên Kun 4...">
+        <button class="btn btn-add btn-small" onclick="addNewMember(2)">➕</button>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>STT</th><th>Nhân vật</th><th>Trạng thái</th><th data-html2canvas-ignore>Hành động</th></tr></thead>
+          <tbody id="table2-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card kun2-border">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; flex-wrap: wrap; gap: 5px;">
+        <h2 style="font-size: 16px;">🦋 BẢNG KUN 2</h2>
+        <button class="btn btn-reset btn-small" data-html2canvas-ignore onclick="confirmResetTable(3)">Xóa trạng thái</button>
+      </div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; font-weight: bold;">
+        📅 Ngày: <span id="board3-date">...</span> - SV: <span id="srv3-name" style="color:var(--purple)">...</span>
+      </div>
+
+      <div class="mini-metrics">
+        <div class="stat-box"><span class="stat-lab">Tổng</span><span class="stat-val" id="m3-total" style="color:var(--primary)">0</span></div>
+        <div class="stat-box"><span class="stat-lab">Xong</span><span class="stat-val" id="m3-completed" style="color:var(--success)">0</span></div>
+        <div class="stat-box"><span class="stat-lab">Chờ</span><span class="stat-val" id="m3-pending" style="color:var(--warning)">0</span></div>
+      </div>
+      <div class="add-form" data-html2canvas-ignore>
+        <input type="text" id="newName3" placeholder="Thêm thành viên Kun 2...">
+        <button class="btn btn-add btn-small" onclick="addNewMember(3)">➕</button>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>STT</th><th>Nhân vật</th><th>Trạng thái</th><th data-html2canvas-ignore>Hành động</th></tr></thead>
+          <tbody id="table3-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let globalConfig = null;
+    let currentOffset3 = 0;
+    let currentOffset4 = 0;
+
+    function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString('vi-VN'); }
+    setInterval(updateClock, 1000);
+
+    window.onload = function() { fetchData(0, 0); };
+
+    function fetchData(off3, off4) {
+      currentOffset3 = off3;
+      currentOffset4 = off4;
+      showLoader(true);
+      google.script.run.withSuccessHandler(renderDashboard).getData(currentOffset3, currentOffset4);
+    }
+
+    function renderDashboard(data) {
+      if(data.error) { alert(data.error); showLoader(false); return; }
+      
+      globalConfig = data.config;
+
+      
+      document.getElementById('srv1-name').innerText = data.srvNames.b1;
+      document.getElementById('srv2-name').innerText = data.srvNames.b2;
+      document.getElementById('srv3-name').innerText = data.srvNames.b3;
+      
+      document.getElementById('board1-date').innerText = data.dateStr3;
+      document.getElementById('board2-date').innerText = data.dateStr3;
+      document.getElementById('board3-date').innerText = data.dateStr4;
+
+      
+      const schCont3 = document.getElementById('schedule-container3');
+      schCont3.innerHTML = '';
+      data.schedule3.forEach((s) => {
+        const div = document.createElement('div');
+        div.className = 'schedule-item' + (s.offset === currentOffset3 ? ' active-day' : '');
+        div.onclick = () => fetchData(s.offset, currentOffset4);
+        div.innerHTML = `
+          <div class="sch-date">${s.date}</div>
+          <div class="sch-day">${s.dayName}</div>
+          <div class="sch-srv">${s.server}</div>
+        `;
+        schCont3.appendChild(div);
+      });
+
+      // Render Thanh lịch 2: Kun 2 (Chu kỳ 4)
+      const schCont4 = document.getElementById('schedule-container4');
+      schCont4.innerHTML = '';
+      data.schedule4.forEach((s) => {
+        const div = document.createElement('div');
+        div.className = 'schedule-item' + (s.offset === currentOffset4 ? ' active-day' : '');
+        div.onclick = () => fetchData(currentOffset3, s.offset);
+        div.innerHTML = `
+          <div class="sch-date">${s.date}</div>
+          <div class="sch-day">${s.dayName}</div>
+          <div class="sch-srv" style="color: var(--purple);">${s.server}</div>
+        `;
+        schCont4.appendChild(div);
+      });
+
+      // Metrics
+      document.getElementById('m1-total').innerText = data.metrics1.total;
+      document.getElementById('m1-completed').innerText = data.metrics1.completed;
+      document.getElementById('m1-pending').innerText = data.metrics1.pending;
+      
+      document.getElementById('m2-total').innerText = data.metrics2.total;
+      document.getElementById('m2-completed').innerText = data.metrics2.completed;
+      document.getElementById('m2-pending').innerText = data.metrics2.pending;
+
+      document.getElementById('m3-total').innerText = data.metrics3.total;
+      document.getElementById('m3-completed').innerText = data.metrics3.completed;
+      document.getElementById('m3-pending').innerText = data.metrics3.pending;
+
+      
+      renderTable('table1-body', data.list1, 1);
+      renderTable('table2-body', data.list2, 2);
+      renderTable('table3-body', data.list3, 3);
+      showLoader(false);
+    }
+
+    function renderTable(tbodyId, list, tableId) {
+      const tbody = document.getElementById(tbodyId);
+      tbody.innerHTML = '';
+      list.forEach((item) => {
+        const tr = document.createElement('tr');
+        const badgeClass = item.status ? 'tag-done' : 'tag-wait';
+        const badgeText = item.status ? 'HOÀN THÀNH' : 'ĐANG CHỜ';
+        
+        tr.innerHTML = `
+          <td style="font-weight:bold; color:var(--text-muted)">${item.stt}</td>
+          <td style="font-weight:700">${item.name}</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:8px">
+              <input type="checkbox" ${item.status ? 'checked' : ''} onchange="toggleStatus(${tableId}, ${item.rowIndex}, ${item.colIndex}, this.checked)">
+              <span class="status-tag ${badgeClass}">${badgeText}</span>
+            </div>
+            ${item.status ? `<div class="time-badge" title="Sửa giờ" onclick="editTime(${tableId}, ${item.rowIndex}, '${item.time}')">⏱ ${item.time || 'Thêm giờ'} ✏️</div>` : ''}
+          </td>
+          <td data-html2canvas-ignore>
+            <div style="display:flex; gap:2px">
+              <button class="btn-icon" title="Sửa tên" onclick="editName(${tableId}, ${item.rowIndex}, '${item.name}')">🗡️</button>
+              <button class="btn-icon" onclick="moveRow(${tableId}, ${item.rowIndex}, 'up')">⬆️</button>
+              <button class="btn-icon" onclick="moveRow(${tableId}, ${item.rowIndex}, 'down')">⬇️</button>
+              <button class="btn-icon" title="Xóa" onclick="confirmDelete(${tableId}, ${item.rowIndex}, '${item.name}')">🦋</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    
+    function toggleStatus(boardId, r, c, check) { showLoader(true); google.script.run.withSuccessHandler(renderDashboard).updateStatus(currentOffset3, currentOffset4, boardId, r, c, check); }
+    
+    function addNewMember(id) {
+      const inp = document.getElementById('newName' + id);
+      if(!inp.value.trim()) return;
+      showLoader(true);
+      google.script.run.withSuccessHandler(renderDashboard).addMember(currentOffset3, currentOffset4, id, inp.value);
+      inp.value = '';
+    }
+    
+    function editName(id, r, old) {
+      let n = prompt("Sửa tên nhân vật:", old);
+      if (n && n.trim() !== "") { showLoader(true); google.script.run.withSuccessHandler(renderDashboard).editMemberName(currentOffset3, currentOffset4, id, r, n); }
+    }
+    
+    function editTime(id, r, old) {
+      let t = prompt("Sửa thời gian (HH:mm dd/MM):", old);
+      if (t !== null) { showLoader(true); google.script.run.withSuccessHandler(renderDashboard).editMemberTime(currentOffset3, currentOffset4, id, r, t); }
+    }
+    
+    function moveRow(id, r, dir) { showLoader(true); google.script.run.withSuccessHandler(renderDashboard).moveMember(currentOffset3, currentOffset4, id, r, dir); }
+    function confirmDelete(id, r, name) { if(confirm(`Xóa nhân vật ${name}?`)) { showLoader(true); google.script.run.withSuccessHandler(renderDashboard).removeMember(currentOffset3, currentOffset4, id, r); } }
+    function confirmResetTable(id) { if(confirm("Xóa trạng thái của bảng này trong Server đang chọn?")) { showLoader(true); google.script.run.withSuccessHandler(renderDashboard).resetTableData(currentOffset3, currentOffset4, id); } }
+
+    function openConfig() {
+      if(!globalConfig) return;
+      document.getElementById('cfg_pk0').value = globalConfig.pk4[0];
+      document.getElementById('cfg_pk1').value = globalConfig.pk4[1];
+      document.getElementById('cfg_pk2').value = globalConfig.pk4[2];
+      
+      document.getElementById('cfg_k2_0').value = globalConfig.kun2[0];
+      document.getElementById('cfg_k2_1').value = globalConfig.kun2[1];
+      document.getElementById('cfg_k2_2').value = globalConfig.kun2[2];
+      document.getElementById('cfg_k2_3').value = globalConfig.kun2[3];
+      
+      document.getElementById('cfgModal').style.display = 'flex';
+    }
+    function closeConfig() { document.getElementById('cfgModal').style.display = 'none'; }
+    function saveConfig() {
+      showLoader(true);
+      closeConfig();
+      let payload = {
+        pk0: document.getElementById('cfg_pk0').value, pk1: document.getElementById('cfg_pk1').value, pk2: document.getElementById('cfg_pk2').value,
+        k2_0: document.getElementById('cfg_k2_0').value, k2_1: document.getElementById('cfg_k2_1').value, k2_2: document.getElementById('cfg_k2_2').value, k2_3: document.getElementById('cfg_k2_3').value,
+        offset3: currentOffset3, offset4: currentOffset4
+      };
+      google.script.run.withSuccessHandler(renderDashboard).saveConfig(payload);
+    }
+    
+    function takeScreenshot() {
+      showLoader(true);
+      setTimeout(() => {
+        html2canvas(document.body, { scale: 2, backgroundColor: "#f0f2f5" }).then(canvas => {
+          let link = document.createElement("a");
+          link.download = "Dashboard_" + new Date().toLocaleDateString('vi-VN').replace(/\//g, '-') + ".png";
+          link.href = canvas.toDataURL();
+          link.click();
+          showLoader(false);
+        });
+      }, 500);
+    }
+    function showLoader(s) { document.getElementById('loader').style.display = s ? 'flex' : 'none'; }
+  </script>
+</body>
+</html>
